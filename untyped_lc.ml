@@ -110,3 +110,14 @@ let (I 24) = eval2 (App (fact, Nat 4))
 let (I 120) = eval2 (App (fact, Nat 5))
 
 let test = Fix (Lam ("f", Lam ("l", Nat 1)));;
+
+let betterif cond truebranch falsebranch = 
+    App (genif cond (Lam ("()", truebranch)) (Lam ("()", falsebranch)), Unit)
+
+let betterthingy = Lam ("n", betterif (Eq (X "n", Nat 0)) (Nat 1) (Times (X "n", App (X "f", Minus (X "n", Nat 1)))))
+let betterfact = App(z, (Lam ("f", betterthingy)))
+let (I 1) = eval2 (App (betterfact, Nat 1))
+let (I 2) = eval2 (App (betterfact, Nat 2))
+let (I 6) = eval2 (App (betterfact, Nat 3))
+let (I 24) = eval2 (App (betterfact, Nat 4))
+let (I 120) = eval2 (App (betterfact, Nat 5))
