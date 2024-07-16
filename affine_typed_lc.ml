@@ -12,8 +12,8 @@ exception TypeCheckError of string
 *)
 type datatype = UnitType | BoolType | IntType | FnType of datatype * datatype
 
-(* Affine modifier = AtMost 1*)
-type modifier = NoMod | AtMost of int
+(* Affine modifier = AtMost 1 *)
+type modifier = NoMod | AtMost of int | AtLeast of int
 let affine = AtMost 1
 
 (* affine = use at most once *)
@@ -94,10 +94,6 @@ let rec eval (env : envir) = function
     |   (If (cond, succ, fail)) ->
             if (eval env cond) = (Bool true) then eval env succ else eval env fail
 
-let redOne = function 
-        NoMod -> NoMod
-    | AtMost k -> AtMost (k - 1)
-
 let rec removeShadowed name = function
     [] -> []
 |   (n, v) :: xs -> if n = name then removeShadowed name xs else (n, v) :: removeShadowed name xs
@@ -111,7 +107,10 @@ let processChanges name changesList originalModifier =
     let varUses, leftover = countUses changesList in
     let checkMods = (match originalModifier with
         NoMod -> leftover
-    |   AtMost k -> if varUses > k then raise (TypeCheckError "Affine type used too many times") else leftover) in
+    |   AtMost k -> if varUses > k then 
+                raise (TypeCheckError ("Affine type used too many times " ^ string_of_int varUses ^ " > " ^ string_of_int k)) 
+                else leftover
+    |   AtLeast k -> if varUses < k then raise (TypeCheckError ("Affine type not used enough times " ^ string_of_int varUses ^ " < " ^ string_of_int k)) else leftover) in
     removeShadowed name checkMods
 
 let rec countsame name = function
@@ -169,9 +168,6 @@ let rec typecheck (gamma: datatype StringMap.t) = function
     |   (X x) -> 
             let t = StringMap.find x gamma in
             t, [(x, -1)]
-            (*(match maxuses with
-                AtMost 0 -> raise (TypeCheckError "Affine type used too many times")
-            |   _ -> t, [(x, t, redOne maxuses)]))*)
     |   (App (e1, e2)) -> 
             let argT, ch = typecheck gamma e2 in
             (* save the type environment only from the function, because the fn has not yet been fully evaluated *)
