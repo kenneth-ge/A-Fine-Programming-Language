@@ -6,6 +6,7 @@ type exp = Unit | Nat of int | Neg of exp | Plus of exp * exp | Times of exp * e
     | Eq of exp * exp | Less of exp * exp | More of exp * exp
     | X of string | App of exp * exp | Lam of string * exp
     | Fix of exp
+    | Let of string * exp * exp
 
 exception VarNotFound
 exception TypeError
@@ -73,6 +74,9 @@ let rec eval (env : value StringMap.t) = function
             |   _ -> raise TypeError)
     |   (Lam (x, exp)) -> Fun (env, x, exp)
     |   (Fix exp) -> eval env (App (z, exp))
+    |   (Let (name, value, next)) -> 
+            let newenv = StringMap.add name (eval env value) env in
+            eval newenv next
 
 let eval2 exp = 
     let ans = eval StringMap.empty exp in
@@ -121,3 +125,10 @@ let (I 2) = eval2 (App (betterfact, Nat 2))
 let (I 6) = eval2 (App (betterfact, Nat 3))
 let (I 24) = eval2 (App (betterfact, Nat 4))
 let (I 120) = eval2 (App (betterfact, Nat 5))
+
+(* test let statements *)
+let (I 720) = eval2(
+    Let ("fact_internal", Lam ("f", Lam ("n", betterif (Eq (X "n", Nat 0)) (Nat 1) (Times (X "n", App (X "f", Minus (X "n", Nat 1)))))),
+        Let ("fact", Fix ((X "fact_internal")),
+        App (X "fact", Nat 6))
+    ))
