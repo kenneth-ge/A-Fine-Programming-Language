@@ -27,6 +27,7 @@ let rec eval (gamma : basecase StringMap.t) = function
     |   (X x) -> (print_keys gamma; print_string ("Finding: " ^ x ^ "\n"); flush stdout; (StringMap.find x gamma, gamma))
     |   (App (e1, e2)) -> 
             let arg, _ = eval gamma e2 in
+            (* save the type environment only from the function, because the fn has not yet been fully evaluated *)
             let fn, gamma2 = eval gamma e1 in
             (match fn with
                 Fun (x, t, exp) -> 
@@ -54,3 +55,5 @@ let (I 5) = eval2 (App (plusonefn, Nat 4))
 
 let currytest = Lam ("input", Int, Lam ("transform", To (Int, Int), App (X "transform", X "input")))
 let (I 5) = eval2 (App (App (currytest, Nat 4), plusonefn))
+
+let selectfirst = Lam ("A", )
