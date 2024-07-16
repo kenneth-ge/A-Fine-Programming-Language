@@ -2,7 +2,7 @@ module StringMap = Map.Make(String)
 
 (* affine = use at most once *)
 (*type modifier = None | Affine*)
-type exp = Nat of int | Neg of exp | Plus of exp * exp | Times of exp * exp | Minus of exp * exp
+type exp = Unit | Nat of int | Neg of exp | Plus of exp * exp | Times of exp * exp | Minus of exp * exp
     | Eq of exp * exp | Less of exp * exp | More of exp * exp
     | X of string | App of exp * exp | Lam of string * exp
     | Fix of exp
@@ -10,7 +10,7 @@ type exp = Nat of int | Neg of exp | Plus of exp * exp | Times of exp * exp | Mi
 exception VarNotFound
 exception TypeError
 
-type value = I of int | Fun of envir * string * exp
+type value = UnitVal | I of int | Fun of envir * string * exp
 and envir = value StringMap.t
 
 let print_keys (m : value StringMap.t) = 
@@ -31,7 +31,8 @@ let ggx = Lam ("g", App (X "G", Lam ("x", App (App (X "g", X "g"), X "x"))))
 let z = Lam ("G", App (ggx, ggx))
 
 let rec eval (env : value StringMap.t) = function 
-        (Nat i) -> I i
+        Unit -> UnitVal
+    |   (Nat i) -> I i
     |   (Neg e) -> (match (eval env e) with
                     I i -> I (-i)
                 |   _ -> raise TypeError)
@@ -49,7 +50,7 @@ let rec eval (env : value StringMap.t) = function
         |   _ -> raise TypeError)
     |   (Eq (e1, e2)) -> 
             (match (eval env e1, eval env e2) with
-                (I i, I i2) -> (if i = i2 then true_ else false_)
+                (I i, I i2) -> (if i = i2 then (print_string "evals to true"; true_) else (print_string "evals to false"; print_int i; print_int i2; false_))
             |   _ -> raise TypeError)
     |   (Less (e1, e2)) -> 
             (match (eval env e1, eval env e2) with
@@ -96,5 +97,16 @@ let iftest = Nat 5 = App (App (App (if_, Eq (Nat 3, Nat 3)), Nat 5), Nat 6)
 
 let genif cond iftrue iffalse = 
     App(App (App (if_, cond), iftrue), iffalse)
-let fact = App(z, (Lam ("f", Lam ("n", genif (Eq (X "n", Nat 0)) (Nat 1) (Times (X "n", App (X "f", Minus (X "n", Nat 1))))))))
-(*let (I 1) = eval2 (App (fact, Nat 0)) *)
+
+let thingy = Lam ("n", genif (Eq (X "n", Nat 0)) (Lam ("()", Nat 1)) (Lam ("()", Times (X "n", App (App (X "f", Minus (X "n", Nat 1)), Unit)))))
+let fact_internal = App(z, (Lam ("f", thingy)))
+let (I 1) = eval2 (App (App (fact_internal, Nat 0), Unit))
+
+let fact = Lam ("n", App (App (fact_internal, X "n"), Unit))
+let (I 1) = eval2 (App (fact, Nat 1))
+let (I 2) = eval2 (App (fact, Nat 2))
+let (I 6) = eval2 (App (fact, Nat 3))
+let (I 24) = eval2 (App (fact, Nat 4))
+let (I 120) = eval2 (App (fact, Nat 5))
+
+let test = Fix (Lam ("f", Lam ("l", Nat 1)));;
