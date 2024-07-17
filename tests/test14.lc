@@ -1,0 +1,4 @@
+let use : int -> bool := fn x : int => true in
+let close : int -> bool := fn x : int => true in
+let test : int -> bool := fn resource : int ; linear => if (use resource) then (close resource) else false in
+test 5

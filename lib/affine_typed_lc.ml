@@ -98,20 +98,24 @@ let rec removeShadowed name = function
     [] -> []
 |   (n, v) :: xs -> if n = name then removeShadowed name xs else (n, v) :: removeShadowed name xs
 
-let processChanges name changesList originalModifier =
+let processChanges name minChangesList maxChangesList originalModifier =
     let rec countUses = function
         [] -> 0, []
     |   (varname, diff) as curr :: xs -> (
             let changes, remainder = countUses xs in
             (if name = varname then (diff + changes, remainder) else (changes, curr :: remainder))) in
-    let varUses, leftover = countUses changesList in
-    let checkMods = (match originalModifier with
-        NoMod -> leftover
-    |   AtMost k -> if varUses > k then 
-                raise (TypeCheckError ("Affine type used too many times " ^ string_of_int varUses ^ " > " ^ string_of_int k)) 
-                else leftover
-    |   AtLeast k -> if varUses < k then raise (TypeCheckError ("Affine type not used enough times " ^ string_of_int varUses ^ " < " ^ string_of_int k)) else leftover) in
-    removeShadowed name checkMods
+    let minUses, leftover = countUses minChangesList in
+    let maxUses, leftover2 = countUses maxChangesList in
+    let checkMods, checkMods2 = (match originalModifier with
+        NoMod -> leftover, leftover2
+    |   AtMost k -> if maxUses > k then 
+                raise (TypeCheckError ("Affine type used too many times " ^ string_of_int maxUses ^ " > " ^ string_of_int k)) 
+                else leftover, leftover2
+    |   AtLeast k -> if minUses < k then raise (TypeCheckError ("Affine type not used enough times " ^ string_of_int minUses ^ " < " ^ string_of_int k)) 
+                else leftover, leftover2
+    |   Exactly k -> if minUses = k && maxUses = k then leftover, leftover2 else 
+                raise (TypeCheckError ("Exactly type not used exactly " ^ string_of_int k ^ " times, used min of " ^ string_of_int minUses ^ " times and max of " ^ string_of_int maxUses ^ " times depending on path"))) in
+    removeShadowed name checkMods, removeShadowed name checkMods2
 
 let rec countsame name = function
         [] -> 0, []
@@ -125,79 +129,79 @@ let rec sumindiv = function
         let countthisone, leftovers = countsame name xs in
         (name, diff + countthisone) :: (sumindiv leftovers)
 
-let rec pairwisemax l1 = function
-        [] -> l1
+let rec pairwise comparator include_empty l1 = function
+        [] -> if include_empty then l1 else []
     |   (n, cnt) :: xs -> 
         match List.find_opt (fun (n2, cnt2) -> n = n2) l1 with
-            None -> (n, cnt) :: pairwisemax l1 xs
-        |   Some (_, cnt2) -> (n, max cnt cnt2) :: pairwisemax (List.remove_assoc n l1) xs
+            None -> if include_empty then (n, cnt) :: pairwise comparator include_empty l1 xs else pairwise comparator include_empty l1 xs
+        |   Some (_, cnt2) -> (n, comparator cnt cnt2) :: pairwise comparator include_empty (List.remove_assoc n l1) xs
             
 
-let rec consolidate acc = function
+let rec consolidate comparator include_empty acc = function
         [] -> acc
     |   x :: xs ->
         let processed = sumindiv x in
-        consolidate (pairwisemax acc processed) xs
+        consolidate comparator include_empty (pairwise comparator include_empty acc processed) xs
 
 let rec print_changes = function
     [] -> print_string "]\n"; flush stdout
 |   (x, cnt) :: xs -> print_string (x ^ " " ^ string_of_int cnt ^ " "); print_changes xs
 
 let rec typecheck (gamma: datatype StringMap.t) = function
-        Unit -> UnitType, []
-    |   Bool b -> BoolType, []
+        Unit -> UnitType, [], []
+    |   Bool b -> BoolType, [], []
     |   Not e -> (match typecheck gamma e with
-                    BoolType, c -> BoolType, c
+                    BoolType, c, d -> BoolType, c, d
                 |   _ -> raise (TypeCheckError "Can only take not of bool"))
-    |   (Nat i) -> IntType, []
+    |   (Nat i) -> IntType, [], []
     |   (Neg e) -> (match (typecheck gamma e) with
-                    IntType, c -> IntType, c
+                    IntType, c, d -> IntType, c, d
                 |   _ -> raise (TypeCheckError "Can only take negative of int"))
     |   (Or (e1, e2))
     |   (And (e1, e2)) -> (* These are examples of x operators *)
         (match (typecheck gamma e1, typecheck gamma e2) with
-            ((BoolType, c), (BoolType, c2)) -> BoolType, (c @ c2)
+            ((BoolType, c, d), (BoolType, c2, d2)) -> BoolType, (c @ c2), (d @ d2)
         |   _ -> raise (TypeCheckError "And/or operator args need to be bools"))
     |   (Plus (e1, e2))
     |   (Times (e1, e2))
     |   (Div (e1, e2))
     |   (Minus (e1, e2)) -> (* These are examples of x operators *)
         (match (typecheck gamma e1, typecheck gamma e2) with
-            ((IntType, c), (IntType, c2)) -> IntType, (c @ c2)
+            ((IntType, c, d), (IntType, c2, d2)) -> IntType, (c @ c2), (d @ d2)
         |   _ -> raise (TypeCheckError "Arithmetic operator args need to be ints"))
     |   (Eq (e1, e2)) -> 
             (match (typecheck gamma e1, typecheck gamma e2) with
-                ((IntType, c), (IntType, c2)) -> BoolType, c @ c2
-            |   ((BoolType, c), (BoolType, c2)) -> BoolType, c @ c2
-            |   ((UnitType, c), (UnitType, c2)) -> BoolType, c @ c2
+                ((IntType, c, d), (IntType, c2, d2)) -> BoolType, c @ c2, d @ d2
+            |   ((BoolType, c, d), (BoolType, c2, d2)) -> BoolType, c @ c2, d @ d2
+            |   ((UnitType, c, d), (UnitType, c2, d2)) -> BoolType, c @ c2, d @ d2
             |   _ -> raise (TypeCheckError "can only compare ints, bools, and unit types using = operator"))
     |   (Less (e1, e2))
     |   (More (e1, e2)) -> 
             (match (typecheck gamma e1, typecheck gamma e2) with
-                ((IntType, c), (IntType, c2)) -> BoolType, c @ c2
+                ((IntType, c, d), (IntType, c2, d2)) -> BoolType, c @ c2, d @ d2
             |   _ -> raise (TypeCheckError "can only compare ints using <> operators"))
     |   (X x) -> 
             let t = StringMap.find x gamma in
-            t, [(x, 1)]
+            t, [(x, 1)], [(x, 1)]
     |   (App (e1, e2)) -> 
-            let argT, ch = typecheck gamma e2 in
+            let argT, ch, dh = typecheck gamma e2 in
             (* save the type environment only from the function, because the fn has not yet been fully evaluated *)
-            let fnT, ch2 = typecheck gamma e1 in
+            let fnT, ch2, dh2 = typecheck gamma e1 in
             (match fnT with
                 FnType (inputT, outputT) -> 
-                    if argT = inputT then outputT, ch @ ch2 else raise (TypeCheckError "Argument has different type than what the function wants")
+                    if argT = inputT then outputT, ch @ ch2, dh @ dh2 else raise (TypeCheckError "Argument has different type than what the function wants")
             |   _ -> raise (TypeCheckError "Cannot apply when fn is not of function type"))
     |   (Lam (x, (datatype, modif), exp)) -> (
             (*  All affine types begin here, because this is where we name 
                 variables and can specify that a type needs to be affine *)
             let gamma' = StringMap.add x datatype gamma in
-            let bodytype, changes = typecheck gamma' exp in
-            let remainingChanges = processChanges x changes modif in
-            FnType (datatype, bodytype), remainingChanges
+            let bodytype, changes, dhanges = typecheck gamma' exp in
+            let remainingChanges, remainingDhanges = processChanges x changes dhanges modif in
+            FnType (datatype, bodytype), remainingChanges, remainingDhanges
         )
     |   (Fix exp) -> (* fix has type (('a -> 'b) -> 'a -> 'b) -> ('a -> 'b) *)
              (match typecheck gamma exp with
-                (FnType (FnType (a, b), FnType (c, d)), changes) -> if a = c && b = d then FnType (a, b), changes else (raise (TypeCheckError "You have a function of the form ('a -> 'b) -> 'c -> 'd, where either 'a != 'c or 'b != 'd. But, we should have 'a = 'c and 'b = 'd"))
+                (FnType (FnType (a, b), FnType (c, d)), minChanges, maxChanges) -> if a = c && b = d then FnType (a, b), minChanges, maxChanges else (raise (TypeCheckError "You have a function of the form ('a -> 'b) -> 'c -> 'd, where either 'a != 'c or 'b != 'd. But, we should have 'a = 'c and 'b = 'd"))
             |   _ -> raise (TypeCheckError "Can only fix fn of type ('a -> 'b) -> 'a -> 'b")
              )
     |   (Let (name, (decltype, modif), value, next)) -> 
@@ -206,17 +210,20 @@ let rec typecheck (gamma: datatype StringMap.t) = function
                cannot use the same name that we are doing in the current let statement
                and stuff (unless it's shadowing)
             *)
-            let t, modlist = typecheck gamma value in
-            let modlist = removeShadowed name modlist in
+            let t, minModlist, maxModlist = typecheck gamma value in
+            (*let minModlist = removeShadowed name minModlist in
+            let maxModlist = removeShadowed name maxModlist in*)
             let () = if decltype = t then () else raise (TypeCheckError "Declared type in let statement different from actual type of expression") in
             let gamma' = StringMap.add name t gamma in
-            let bodytype, changes = typecheck gamma' next in
-            let remainingChanges = processChanges name (modlist @ changes) modif in
-            bodytype, remainingChanges
+            let bodytype, minChanges, maxChanges = typecheck gamma' next in
+            let remainingMinChanges, remainingMaxChanges = processChanges name (minModlist @ minChanges) (maxModlist @ maxChanges) modif in
+            bodytype, remainingMinChanges, remainingMaxChanges
     |   (If (arg, iftrue, iffalse)) ->
             (* If is a special case where instead of just adding changes together, we take the max *)
             match (typecheck gamma arg, typecheck gamma iftrue, typecheck gamma iffalse) with
-                ((BoolType, changes1), (a, changes2), (b, changes3)) -> if a = b then a, changes1 @ (consolidate [] [changes2; changes3]) else raise (TypeCheckError "branches of if statement don't match")
+                ((BoolType, minChanges1, maxChanges1), (a, minChanges2, maxChanges2), (b, minChanges3, maxChanges3)) -> 
+                    if a = b then a, minChanges1 @ (consolidate min false [] [minChanges2; minChanges3]), maxChanges1 @ (consolidate max true [] [maxChanges2; maxChanges3])
+                    else raise (TypeCheckError "branches of if statement don't match")
             |   _ -> raise (TypeCheckError "if statement needs to take in bool")
 
 let eval2 exp =
@@ -296,6 +303,7 @@ and string_of_mod = function
     | NoMod -> "NoMod"
     | AtLeast x -> "AtLeast " ^ string_of_int x
     | AtMost x -> "AtMost " ^ string_of_int x
+    | Exactly x -> "Exactly " ^ string_of_int x
 
 let rec string_of_value = function
     | UnitVal -> "()"

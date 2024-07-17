@@ -1,7 +1,7 @@
 type datatype = UnitType | BoolType | IntType | FnType of datatype * datatype
 
 (* Affine modifier = AtMost 1 *)
-type modifier = NoMod | AtMost of int | AtLeast of int
+type modifier = NoMod | AtMost of int | AtLeast of int | Exactly of int
 let affine = AtMost 1
 
 (* affine = use at most once *)

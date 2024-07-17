@@ -30,3 +30,8 @@ clean_exe:
 
 clean_temp:
 	rm Ast.cmi, Ast.cmo, Lexer.cmi, Lexer.cmo, Lexer.ml, main.cmi, main.cmo, Parser.cmi, Parser.cmo, Parser.ml, Parser.mli, Affine_typed_lc.cmo, Affine_typed_lc.cmi
+
+#	@for file in ../tests/*; do \
+#		echo "Running main.exe on $$file"; \
+#		-./main.exe $$file || true; \
+#	done
