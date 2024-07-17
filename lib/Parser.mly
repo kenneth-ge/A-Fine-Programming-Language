@@ -40,8 +40,8 @@ expr:
   | IF expr THEN expr ELSE expr { If ($2, $4, $6) }
   | LET IDENT ANNOTATION typexpr SET expr IN expr { Let ($2, ($4, NoMod), $6, $8) }
   | LAMBDA IDENT ANNOTATION typexpr ARROW expr { Lam ($2, ($4, NoMod), $6) }
-  (*| LET IDENT ANNOTATION typexpr SEMI modifier SET expr IN expr { Let ($2, ($4, $6), $8, $10) }
-  | LAMBDA IDENT ANNOTATION typexpr SEMI modifier ARROW expr { Lam ($2, ($4, $6), $8) }*)
+  | LET IDENT ANNOTATION typexpr SEMI modifier SET expr IN expr { Let ($2, ($4, $6), $8, $10) }
+  | LAMBDA IDENT ANNOTATION typexpr SEMI modifier ARROW expr { Lam ($2, ($4, $6), $8) }
   | FIX expr { Fix $2 }
   | expr DOT expr %prec APP { App ($1, $3) }  
   | LPAREN expr RPAREN { $2 }

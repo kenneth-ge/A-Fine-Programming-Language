@@ -1,0 +1,2 @@
+let value : int := 5 in
+if value < 10 then false else true

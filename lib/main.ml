@@ -1,12 +1,12 @@
-let parse_with_error lexbuf = Parser.main Lexer.token lexbuf
-  (*try
-    Parser.main Lexer.read lexbuf
+let parse_with_error lexbuf =
+  try
+    Parser.main Lexer.token lexbuf
   with
   (*| Lexer.SyntaxError msg ->
       Printf.fprintf stderr "%s%!" msg; exit (-1)*)
   | Parser.Error ->
       Printf.fprintf stderr "At offset %d: syntax error.\n%!" (Lexing.lexeme_start lexbuf); exit (-1)
-  | _ -> Printf.fprintf stderr "Unknown error occurred\n"; exit (-1)*)
+  | _ -> Printf.fprintf stderr "Unknown error occurred\n"; exit (-1)
 
 open Ast
 open Affine_typed_lc

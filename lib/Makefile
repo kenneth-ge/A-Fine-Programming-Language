@@ -3,16 +3,28 @@ SHELL = powershell.exe
 CP = copy /B
 RM = del
 
-all:
+all: Lexer.ml Ast.cmo Affine_typed_lc.cmo Parser.cmo Lexer.cmo main.cmo
+	ocamlc -o main.exe Ast.cmo Lexer.cmo Parser.cmo Affine_typed_lc.cmo main.cmo
+
+Lexer.ml: Lexer.mll
 	ocamllex Lexer.mll
+
+Ast.cmo: Ast.ml
 	ocamlc -c Ast.ml
+
+Affine_typed_lc.cmo: Affine_typed_lc.ml
 	ocamlc -c Affine_typed_lc.ml
+
+Parser.cmo: Ast.cmo Parser.mly
 	menhir Parser.mly
 	ocamlc -c Parser.mli
 	ocamlc -c Parser.ml
+
+Lexer.cmo: Lexer.ml Ast.cmo Parser.cmo
 	ocamlc -c Lexer.ml
+
+main.cmo: Ast.cmo Affine_typed_lc.cmo Parser.cmo Lexer.cmo main.ml
 	ocamlc -c main.ml
-	ocamlc -o main.exe Ast.cmo Lexer.cmo Parser.cmo Affine_typed_lc.cmo main.cmo
 
 copy:
 	cp ../affine_typed_lc.ml ./Affine_typed_lc.ml
