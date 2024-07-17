@@ -27,6 +27,7 @@ Necessary things:
 
 Feels like I'm rediscovering SML:
 * Adding unit variable for easier delayed computation, so that we don't have to be confusing by making lambda expressions with bogus arguments
-* Adding `let` statements for clarify
+* Adding `let` statements for clarity
+* Same left/right associative-ness, and understanding where many of the rules come from
 * No free variables
 * Eager evaluation
