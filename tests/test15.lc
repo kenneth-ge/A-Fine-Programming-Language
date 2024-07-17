@@ -1,0 +1,9 @@
+let chng_ownership : int -> int := (fn resource : int => 
+    let do_whatever_we_want : int := if resource < 3 then 10 else 11 in
+    let yay_we_can_choose_to_use_more_than_once : int := resource - 5 in
+    do_whatever_we_want + yay_we_can_choose_to_use_more_than_once) in
+let create_resource : unit -> int := fn j : unit => 0 in
+let main : int -> int := (fn resource : int ; linear =>
+    let notice_how_we_use_linear_type_to_force_ownership_transfer : unit := () in
+    chng_ownership resource) in
+main (create_resource ())
