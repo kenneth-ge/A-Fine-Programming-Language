@@ -43,7 +43,7 @@ rule token = parse
   | "linear" {LINEAR}
   | "atmost" {ATMOST}
   | "atleast" {ATLEAST}
-  | (['a'-'z' 'A'-'Z'] ['a'-'z' 'A'-'Z' '0'-'9' '_']*) as id { IDENT id }
+  | (['a'-'z' 'A'-'Z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '_']*) as id { IDENT id }
   | eof { EOF }
   | _ { failwith "Unknown character" }
 
