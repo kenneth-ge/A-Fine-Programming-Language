@@ -2,3 +2,8 @@
 *.cmo
 Parser.ml
 *.exe
+
+Lexer.ml
+Parser.automaton
+Parser.mli
+Microsoft.Powershell_profile.ps1
