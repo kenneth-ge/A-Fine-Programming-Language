@@ -18,8 +18,8 @@ let affine = AtMost 1
 
 (* affine = use at most once *)
 (*type modifier = None | Affine*)
-type exp = Unit
-    | Nat of int | Neg of exp | Plus of exp * exp | Times of exp * exp | Minus of exp * exp
+type exp = Unit | Bool of bool
+    | Nat of int | Neg of exp | Plus of exp * exp | Times of exp * exp | Minus of exp * exp | Div of exp * exp
     | Not of exp
     | Eq of exp * exp | Less of exp * exp | More of exp * exp
     | X of string | App of exp * exp | Lam of string * (datatype * modifier) * exp
@@ -37,6 +37,7 @@ let z = Lam ("G", (UnitType, NoMod), App (ggx, ggx))
 
 let rec eval (env : envir) = function 
         Unit -> UnitVal
+    |   Bool b -> Bool b
     |   Not b -> (match (eval env b) with
             Bool b -> Bool (not b)
         |   _ -> raise TypeError)
@@ -52,6 +53,10 @@ let rec eval (env : envir) = function
             (match (eval env e1, eval env e2) with
                 (I i, I i2) -> I (i * i2)
             |   _ -> raise TypeError)
+    |   (Div (e1, e2)) -> 
+        (match (eval env e1, eval env e2) with
+            (I i, I i2) -> I (i / i2)
+        |   _ -> raise TypeError)
     |   (Minus (e1, e2)) -> 
         (match (eval env e1, eval env e2) with
             (I i, I i2) -> I (i - i2)
@@ -141,6 +146,7 @@ let rec consolidate acc = function
 
 let rec typecheck (gamma: datatype StringMap.t) = function
         Unit -> UnitType, []
+    |   Bool b -> BoolType, []
     |   Not e -> (match typecheck gamma e with
                     BoolType, c -> BoolType, c
                 |   _ -> raise (TypeCheckError "Can only take not of bool"))
@@ -150,6 +156,7 @@ let rec typecheck (gamma: datatype StringMap.t) = function
                 |   _ -> raise (TypeCheckError "Can only take negative of int"))
     |   (Plus (e1, e2))
     |   (Times (e1, e2))
+    |   (Div (e1, e2))
     |   (Minus (e1, e2)) -> (* These are examples of x operators *)
         (match (typecheck gamma e1, typecheck gamma e2) with
             ((IntType, c), (IntType, c2)) -> IntType, (c @ c2)
@@ -209,12 +216,12 @@ let rec typecheck (gamma: datatype StringMap.t) = function
             |   _ -> raise (TypeCheckError "if statement needs to take in bool")
 
 let eval2 exp =
-    let typecheckresult = typecheck StringMap.empty exp in 
+    let _ = typecheck StringMap.empty exp in 
     let () = print_string "type checked successfully! \n"; flush stdout in
     let ans = eval StringMap.empty exp in
     ans
 
-let nattest = Nat 5
+(* let nattest = Nat 5
 let (I 5) = eval2 nattest
 
 let negtest = Neg nattest
@@ -249,4 +256,38 @@ let (I 720) = eval2 (
     Let ("fact_internal", (FnType (FnType (IntType, IntType), FnType (IntType, IntType)), NoMod), innerfact,
         Let ("fact", (FnType (IntType, IntType), NoMod), Fix (X "fact_internal"),
         App (X "fact", Nat 6))
-    ))
+    ))*)
+
+let rec string_of_exp = function
+    | Unit -> "Unit"
+    | Bool b -> string_of_bool b
+    | Nat n -> string_of_int n
+    | Neg e -> "Neg(" ^ string_of_exp e ^ ")"
+    | Plus (e1, e2) -> "Plus(" ^ string_of_exp e1 ^ ", " ^ string_of_exp e2 ^ ")"
+    | Times (e1, e2) -> "Times(" ^ string_of_exp e1 ^ ", " ^ string_of_exp e2 ^ ")"
+    | Minus (e1, e2) -> "Minus(" ^ string_of_exp e1 ^ ", " ^ string_of_exp e2 ^ ")"
+    | Div (e1, e2) -> "Div(" ^ string_of_exp e1 ^ ", " ^ string_of_exp e2 ^ ")"
+    | Not e -> "Not(" ^ string_of_exp e ^ ")"
+    | Eq (e1, e2) -> "Eq(" ^ string_of_exp e1 ^ ", " ^ string_of_exp e2 ^ ")"
+    | Less (e1, e2) -> "Less(" ^ string_of_exp e1 ^ ", " ^ string_of_exp e2 ^ ")"
+    | More (e1, e2) -> "More(" ^ string_of_exp e1 ^ ", " ^ string_of_exp e2 ^ ")"
+    | X x -> "X(" ^ x ^ ")"
+    | App (e1, e2) -> "App(" ^ string_of_exp e1 ^ ", " ^ string_of_exp e2 ^ ")"
+    | Lam (x, (typ, _), e) -> "Lam(" ^ x ^ ", " ^ string_of_typ typ ^ ", " ^ string_of_exp e ^ ")"
+    | Fix e -> "Fix(" ^ string_of_exp e ^ ")"
+    | Let (x, (typ, _), e1, e2) -> "Let(" ^ x ^ ", " ^ string_of_typ typ ^ ", " ^ string_of_exp e1 ^ ", " ^ string_of_exp e2 ^ ")"
+    | If (e1, e2, e3) -> "If(" ^ string_of_exp e1 ^ ", " ^ string_of_exp e2 ^ ", " ^ string_of_exp e3 ^ ")"
+
+and string_of_typ = function
+    | IntType -> "IntType"
+    | BoolType -> "BoolType"
+    | UnitType -> "UnitType"
+    | FnType (t1, t2) -> "FunctionType(" ^ string_of_typ t1 ^ " -> " ^ string_of_typ t2 ^ ")"
+
+let rec string_of_value = function
+    | UnitVal -> "()"
+    | Bool b -> string_of_bool b
+    | I i -> string_of_int i
+    | Fun (_, s, exp) -> "[...] fn " ^ s ^ " => " ^ string_of_exp exp
+
+(*let () = print_string (string_of_value (eval2 (App (Lam ("x", (IntType, NoMod), Plus (X "x", Nat 1)), Nat 4))))*)
