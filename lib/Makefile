@@ -23,7 +23,7 @@ Parser.cmo: Ast.cmo Parser.mly
 Lexer.cmo: Lexer.ml Ast.cmo Parser.cmo
 	ocamlc -c Lexer.ml
 
-main.cmo: Ast.cmo Affine_typed_lc.cmo Parser.cmo Lexer.cmo main.ml
+main.cmo: Ast.cmo Affine_typed_lc.cmo main.ml
 	ocamlc -c main.ml
 
 copy:

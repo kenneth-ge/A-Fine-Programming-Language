@@ -17,6 +17,8 @@ rule token = parse
   | '*' { TIMES }
   | '/' { DIV }
   | '!' { NOT }
+  | "or" { OR }
+  | "and" { AND }
   | '=' { EQ }
   | '<' { LESS }
   | '>' { GREATER }

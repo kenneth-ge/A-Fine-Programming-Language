@@ -1,0 +1,28 @@
+
+** Conflict (shift/reduce) in state 53.
+** Tokens involved: PLUS MINUS LESS GREATER EQ
+** The following explanations concentrate on token PLUS.
+** This state is reached from main after reading:
+
+expr2 GREATER expr2
+
+** The derivations that appear below have the following common factor:
+** (The question mark symbol (?) represents the spot where the derivations begin to differ.)
+
+main 
+expr EOF 
+expr2 
+(?)
+
+** In state 53, looking ahead at PLUS, shifting is permitted
+** because of the following sub-derivation:
+
+expr2 GREATER expr2 
+              expr2 . PLUS expr3 
+
+** In state 53, looking ahead at PLUS, reducing production
+** expr2 -> expr2 GREATER expr2
+** is permitted because of the following sub-derivation:
+
+expr2 PLUS expr3 // lookahead token appears
+expr2 GREATER expr2 . 

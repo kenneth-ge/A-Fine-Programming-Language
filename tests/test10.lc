@@ -1,0 +1,2 @@
+let f : int -> (int -> int) := fn x : int => fn y : int ; affine => if y = 5 then y + y + 1 else y + 2 in
+(f 5) 0

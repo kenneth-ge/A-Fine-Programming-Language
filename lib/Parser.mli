@@ -12,6 +12,7 @@ type token =
   | SEMI
   | RPAREN
   | PLUS
+  | OR
   | NOT
   | NEG
   | MINUS
@@ -37,6 +38,7 @@ type token =
   | ATLEAST
   | ARROW
   | ANNOTATION
+  | AND
   | AFFINE
 
 (* This exception is raised by the monolithic API functions. *)
