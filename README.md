@@ -1,8 +1,8 @@
 # A-Fine Programming Language
-A simple functional programming language that supports generalized affine types (e.g. use at most X or at least Y times)
+A simple typed functional programming language that supports generalized affine types (e.g. use at most X or at least Y times). Turing complete through a build-in `fix` operator!
 
 ## With affine types
-Works! For the best experience, run `make` in the `lib` directory to get your executable interpreter. Then, run it with your source file as the only argument. It will tell you if it's syntactically correct, and if it is, if it's well-typed (including checking for affine types). If it is, it will run the program and output the result. Enjoy!
+Works! For the best experience, run `make` in the `lib` directory to get your executable interpreter. Then, run it with your source file as the only argument. It will tell you if it's syntactically correct, and if it is, if it's well-typed (including checking for affine types). If it is, it will run the program and output the result. And yes, I did write my own `Makefile` for this instead of using some build system-- doing a `Makefile` was easier and simpler, and something I was familiar with (I don't like learning new tools that aren't as transferrable, unless I have to or there's some huge benefit). Enjoy!
 
 Tests are in the `tests` folder, demonstrating various language capabilities, including affine types. 
 
