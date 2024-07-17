@@ -1,4 +1,18 @@
-# PL
+# A-Fine Programming Language
+A simple functional programming language that supports generalized affine types (e.g. use at most X or at least Y times)
+
+## With affine types
+Works! For the best experience, run `make` in the `lib` directory to get your executable interpreter. Then, run it with your source file as the only argument. It will tell you if it's syntactically correct, and if it is, if it's well-typed (including checking for affine types). If it is, it will run the program and output the result. Enjoy!
+
+Tests are in the `tests` folder, demonstrating various language capabilities, including affine types. 
+
+Syntax is modeled after ML languages (SML/OCaml). Example:
+
+```ocaml
+let f : int -> int -> bool := fn x : int => fn y : int => if x = 1 and y = 2 then true else false in
+let g : int -> int -> int := fn x : int => fn y : int ; affine => if x = 5 then y + 1 else y + 2 in
+(f 1 2) and ((g 5 1) = 2)
+```
 
 ## Extended Simply Typed Lambda Calculus
 Works! And supports conditions and recursion through built-in `Fix` operator
