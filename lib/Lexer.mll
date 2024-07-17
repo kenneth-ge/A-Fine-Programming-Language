@@ -4,14 +4,13 @@
 
 rule token = parse
   | [' ' '\t' '\n' '\r'] { token lexbuf } (* Ignore whitespace *)
+  | ['0'-'9']+ as num { INT (int_of_string num) }
   | "if" { IF }
   | "then" { THEN }
   | "else" { ELSE }
   | "true" { TRUE }
   | "false" { FALSE }
   | "()" { UNIT }
-  | ['a'-'z' 'A'-'Z'] ['a'-'z' 'A'-'Z' '0'-'9' '_']* as id { IDENT id }
-  | ['0'-'9']+ as num { INT (int_of_string num) }
   | '+' { PLUS }
   | '-' { MINUS }
   | '~' { NEG }
@@ -41,9 +40,10 @@ rule token = parse
   | "affine" {AFFINE}
   | "atmost" {ATMOST}
   | "atleast" {ATLEAST}
+  | (['a'-'z' 'A'-'Z'] ['a'-'z' 'A'-'Z' '0'-'9' '_']) as id { IDENT id }
   | eof { EOF }
   | _ { failwith "Unknown character" }
 
-{
+(*{
   let read lexbuf = token lexbuf
-}
+}*)
