@@ -1,8 +1,5 @@
 SHELL = powershell.exe
 
-CP = copy /B
-RM = del
-
 all: Lexer.ml Ast.cmo Affine_typed_lc.cmo Parser.cmo Lexer.cmo main.cmo
 	ocamlc -o main.exe Ast.cmo Lexer.cmo Parser.cmo Affine_typed_lc.cmo main.cmo
 
@@ -26,8 +23,10 @@ Lexer.cmo: Lexer.ml Ast.cmo Parser.cmo
 main.cmo: Ast.cmo Affine_typed_lc.cmo main.ml
 	ocamlc -c main.ml
 
-clean:
-	$(RM) Ast.cmi Ast.cmo Lexer.cmi Lexer.cmo Lexer.ml main main.cmi main.cmo Parser.cmi Parser.cmo Parser.ml Parser.mli
+clean: clean_exe clean_temp
 
-clean_extra:
-	$(RM) Ast.cmi Ast.cmo Lexer.cmi Lexer.cmo Lexer.ml main.cmi main.cmo Parser.cmi Parser.cmo Parser.ml Parser.mli
+clean_exe:
+	rm main.exe, main.out
+
+clean_temp:
+	rm Ast.cmi, Ast.cmo, Lexer.cmi, Lexer.cmo, Lexer.ml, main.cmi, main.cmo, Parser.cmi, Parser.cmo, Parser.ml, Parser.mli, Affine_typed_lc.cmo, Affine_typed_lc.cmi
