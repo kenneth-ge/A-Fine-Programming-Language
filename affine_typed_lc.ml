@@ -1,3 +1,20 @@
+type datatype = UnitType | BoolType | IntType | FnType of datatype * datatype
+
+(* Affine modifier = AtMost 1 *)
+type modifier = NoMod | AtMost of int | AtLeast of int
+let affine = AtMost 1
+
+(* affine = use at most once *)
+(*type modifier = None | Affine*)
+type exp = Unit | Bool of bool | Nat of int 
+    | Neg of exp | Not of exp 
+    | Or of exp * exp | And of exp * exp
+    | Plus of exp * exp | Times of exp * exp | Minus of exp * exp | Div of exp * exp
+    | Eq of exp * exp | Less of exp * exp | More of exp * exp
+    | X of string | App of exp * exp | Lam of string * (datatype * modifier) * exp
+    | Fix of exp
+    | Let of string * (datatype * modifier) * exp * exp | If of exp * exp * exp
+
 module StringMap = Map.Make(String)
 module IntMap = Map.Make(Int)
 
@@ -10,21 +27,6 @@ exception TypeCheckError of string
 
     Going from lower level to higher level!!!
 *)
-type datatype = UnitType | BoolType | IntType | FnType of datatype * datatype
-
-(* Affine modifier = AtMost 1 *)
-type modifier = NoMod | AtMost of int | AtLeast of int
-let affine = AtMost 1
-
-(* affine = use at most once *)
-(*type modifier = None | Affine*)
-type exp = Unit | Bool of bool
-    | Nat of int | Neg of exp | Plus of exp * exp | Times of exp * exp | Minus of exp * exp | Div of exp * exp
-    | Not of exp
-    | Eq of exp * exp | Less of exp * exp | More of exp * exp
-    | X of string | App of exp * exp | Lam of string * (datatype * modifier) * exp
-    | Fix of exp
-    | Let of string * (datatype * modifier) * exp * exp | If of exp * exp * exp
 
 type value = UnitVal | Bool of bool | I of int | Fun of envir * string * exp
 and envir = value StringMap.t
@@ -45,6 +47,14 @@ let rec eval (env : envir) = function
     |   (Neg e) -> (match (eval env e) with
                     I i -> I (-i)
                 |   _ -> raise TypeError)
+    |   (Or (e1, e2)) -> 
+        (match (eval env e1, eval env e2) with
+            (Bool b, Bool b2) -> Bool (b || b2)
+        |   _ -> raise TypeError)
+    |   (And (e1, e2)) -> 
+        (match (eval env e1, eval env e2) with
+            (Bool b, Bool b2) -> Bool (b && b2)
+        |   _ -> raise TypeError)
     |   (Plus (e1, e2)) -> 
             (match (eval env e1, eval env e2) with
                 (I i, I i2) -> I (i + i2)
@@ -144,6 +154,10 @@ let rec consolidate acc = function
         let processed = sumindiv x in
         consolidate (pairwisemax acc processed) xs
 
+let rec print_changes = function
+    [] -> print_string "]\n"; flush stdout
+|   (x, cnt) :: xs -> print_string (x ^ " " ^ string_of_int cnt ^ " "); print_changes xs
+
 let rec typecheck (gamma: datatype StringMap.t) = function
         Unit -> UnitType, []
     |   Bool b -> BoolType, []
@@ -154,6 +168,11 @@ let rec typecheck (gamma: datatype StringMap.t) = function
     |   (Neg e) -> (match (typecheck gamma e) with
                     IntType, c -> IntType, c
                 |   _ -> raise (TypeCheckError "Can only take negative of int"))
+    |   (Or (e1, e2))
+    |   (And (e1, e2)) -> (* These are examples of x operators *)
+        (match (typecheck gamma e1, typecheck gamma e2) with
+            ((BoolType, c), (BoolType, c2)) -> BoolType, (c @ c2)
+        |   _ -> raise (TypeCheckError "And/or operator args need to be bools"))
     |   (Plus (e1, e2))
     |   (Times (e1, e2))
     |   (Div (e1, e2))
@@ -174,7 +193,7 @@ let rec typecheck (gamma: datatype StringMap.t) = function
             |   _ -> raise (TypeCheckError "can only compare ints using <> operators"))
     |   (X x) -> 
             let t = StringMap.find x gamma in
-            t, [(x, -1)]
+            t, [(x, 1)]
     |   (App (e1, e2)) -> 
             let argT, ch = typecheck gamma e2 in
             (* save the type environment only from the function, because the fn has not yet been fully evaluated *)
@@ -212,7 +231,7 @@ let rec typecheck (gamma: datatype StringMap.t) = function
     |   (If (arg, iftrue, iffalse)) ->
             (* If is a special case where instead of just adding changes together, we take the max *)
             match (typecheck gamma arg, typecheck gamma iftrue, typecheck gamma iffalse) with
-                ((BoolType, changes1), (a, changes2), (b, changes3)) -> if a = b then a, consolidate [] [changes1; changes2; changes3] else raise (TypeCheckError "branches of if statement don't match")
+                ((BoolType, changes1), (a, changes2), (b, changes3)) -> if a = b then a, changes1 @ (consolidate [] [changes2; changes3]) else raise (TypeCheckError "branches of if statement don't match")
             |   _ -> raise (TypeCheckError "if statement needs to take in bool")
 
 let eval2 exp =
@@ -221,7 +240,10 @@ let eval2 exp =
     let ans = eval StringMap.empty exp in
     ans
 
-(* let nattest = Nat 5
+(* 
+print_changes changes1; print_changes changes2; print_changes changes3; print_string "["; print_changes (changes1 @ changes2); print_string "] consolidated:"; print_changes (changes1 @ (consolidate [] [changes2; changes3])); flush stdout; 
+
+let nattest = Nat 5
 let (I 5) = eval2 nattest
 
 let negtest = Neg nattest
@@ -263,6 +285,8 @@ let rec string_of_exp = function
     | Bool b -> string_of_bool b
     | Nat n -> string_of_int n
     | Neg e -> "Neg(" ^ string_of_exp e ^ ")"
+    | And (e1, e2) -> "And(" ^ string_of_exp e1 ^ ", " ^ string_of_exp e2 ^ ")"
+    | Or (e1, e2) -> "Or(" ^ string_of_exp e1 ^ ", " ^ string_of_exp e2 ^ ")"
     | Plus (e1, e2) -> "Plus(" ^ string_of_exp e1 ^ ", " ^ string_of_exp e2 ^ ")"
     | Times (e1, e2) -> "Times(" ^ string_of_exp e1 ^ ", " ^ string_of_exp e2 ^ ")"
     | Minus (e1, e2) -> "Minus(" ^ string_of_exp e1 ^ ", " ^ string_of_exp e2 ^ ")"
@@ -273,7 +297,7 @@ let rec string_of_exp = function
     | More (e1, e2) -> "More(" ^ string_of_exp e1 ^ ", " ^ string_of_exp e2 ^ ")"
     | X x -> "X(" ^ x ^ ")"
     | App (e1, e2) -> "App(" ^ string_of_exp e1 ^ ", " ^ string_of_exp e2 ^ ")"
-    | Lam (x, (typ, _), e) -> "Lam(" ^ x ^ ", " ^ string_of_typ typ ^ ", " ^ string_of_exp e ^ ")"
+    | Lam (x, (typ, modif), e) -> "Lam(" ^ x ^ ", (" ^ string_of_typ typ ^ "," ^ string_of_mod modif ^ "), " ^ string_of_exp e ^ ")"
     | Fix e -> "Fix(" ^ string_of_exp e ^ ")"
     | Let (x, (typ, _), e1, e2) -> "Let(" ^ x ^ ", " ^ string_of_typ typ ^ ", " ^ string_of_exp e1 ^ ", " ^ string_of_exp e2 ^ ")"
     | If (e1, e2, e3) -> "If(" ^ string_of_exp e1 ^ ", " ^ string_of_exp e2 ^ ", " ^ string_of_exp e3 ^ ")"
@@ -283,6 +307,10 @@ and string_of_typ = function
     | BoolType -> "BoolType"
     | UnitType -> "UnitType"
     | FnType (t1, t2) -> "FunctionType(" ^ string_of_typ t1 ^ " -> " ^ string_of_typ t2 ^ ")"
+and string_of_mod = function
+    | NoMod -> "NoMod"
+    | AtLeast x -> "AtLeast " ^ string_of_int x
+    | AtMost x -> "AtMost " ^ string_of_int x
 
 let rec string_of_value = function
     | UnitVal -> "()"

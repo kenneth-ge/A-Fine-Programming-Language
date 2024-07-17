@@ -26,9 +26,6 @@ Lexer.cmo: Lexer.ml Ast.cmo Parser.cmo
 main.cmo: Ast.cmo Affine_typed_lc.cmo main.ml
 	ocamlc -c main.ml
 
-copy:
-	cp ../affine_typed_lc.ml ./Affine_typed_lc.ml
-
 clean:
 	$(RM) Ast.cmi Ast.cmo Lexer.cmi Lexer.cmo Lexer.ml main main.cmi main.cmo Parser.cmi Parser.cmo Parser.ml Parser.mli
 
